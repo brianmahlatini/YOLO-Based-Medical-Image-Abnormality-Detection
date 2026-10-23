@@ -1,115 +1,202 @@
 # YOLO-Based Medical Image Abnormality Detection
 
-Experimental full-stack ML project for detecting and localising suspected abnormalities in chest X-ray-like images.
+A senior-level full-stack machine learning project that detects and localises suspected abnormalities in chest X-ray-like medical images. The project includes research-style data generation, YOLO-format bounding-box annotations, feature engineering, supervised ML model training, model artifact persistence, a FastAPI inference service, automated tests, and a React TypeScript upload interface.
 
-> This system is for research and education only. Detection results do not establish a medical diagnosis.
+> Experimental research system only. Detection results do not establish a medical diagnosis.
 
-## What This Project Does
+## Features
 
-- Generates an authorised local research-style demo dataset with chest X-ray-like images and YOLO-format bounding-box annotations.
-- Defines supervised ML inputs `X` as engineered image features and target `y` as `has_abnormality`.
-- Trains a baseline `RandomForestClassifier`.
-- Trains a stronger `XGBClassifier` when XGBoost is installed, otherwise `GradientBoostingClassifier`.
-- Saves model artifacts with `joblib`.
-- Loads the saved runtime model inside a FastAPI backend.
-- Uploads an image from a React + TypeScript frontend.
-- Returns abnormality probability, localized boxes, confidence scores, annotated image, and evaluation metrics.
-- Provides an optional Ultralytics YOLO training path using the generated `data.yaml`.
+- Synthetic chest X-ray-like dataset generation with bounding-box annotations
+- YOLO-compatible `images/`, `labels/`, and `data.yaml` dataset structure
+- Clear feature matrix `X` and target vector `y`
+- Supervised ML target: whether an image contains a suspected abnormality
+- Baseline model: `RandomForestClassifier`
+- Stronger model: `XGBClassifier`
+- Optional Ultralytics YOLO training path for object detection
+- Runtime abnormality probability from a saved supervised ML model
+- Localised detected regions with bounding boxes and confidence scores
+- Precision, recall, mAP@50, mAP@50-95, ROC AUC, average precision, and F1 evaluation
+- Saved model artifacts with `joblib`
+- FastAPI runtime loading of trained model artifacts
+- React TypeScript interface for image upload and prediction display
+- Backend tests for feature engineering, training, and API predictions
+- S3-compatible storage adapter boundary
+
+## Tech Stack
+
+### Machine Learning
+
+- Python
+- pandas
+- NumPy
+- scikit-learn
+- XGBoost
+- joblib
+- Pillow
+- Optional: PyTorch, Ultralytics YOLO
+
+### Backend
+
+- FastAPI
+- Uvicorn
+- pytest
+- python-multipart
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- Lucide React icons
+
+### Storage Readiness
+
+The demo uses local generated data and local ML artifacts for reproducible training. The backend includes a storage service boundary with local storage and an S3-compatible adapter, ready for MinIO, AWS S3, Cloudflare R2, or another S3-compatible object store.
 
 ## Project Structure
 
 ```text
-backend/
-  app/
-    api/routes.py
-    core/config.py
-    ml/
-      features.py
-      outcome_model.py
-      prediction_model.py
-      artifacts/
-    services/
-      detection_service.py
-      storage.py
-    main.py
-  scripts/
-    generate_dataset.py
-    train_model.py
-  tests/
-frontend/
-  src/
-    components/
-    lib/
-    App.tsx
-    main.tsx
-data/
-  synthetic/
+.
+├── backend/
+│   ├── app/
+│   │   ├── api/
+│   │   │   └── routes.py
+│   │   ├── core/
+│   │   │   └── config.py
+│   │   ├── main.py
+│   │   ├── ml/
+│   │   │   ├── artifacts/
+│   │   │   ├── features.py
+│   │   │   ├── outcome_model.py
+│   │   │   └── prediction_model.py
+│   │   └── services/
+│   │       ├── detection_service.py
+│   │       └── storage.py
+│   ├── scripts/
+│   │   ├── generate_dataset.py
+│   │   └── train_model.py
+│   ├── tests/
+│   │   ├── test_api.py
+│   │   ├── test_features.py
+│   │   └── test_training.py
+│   └── requirements.txt
+├── docs/
+│   ├── model_card.md
+│   └── research_dataset_notes.md
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ResultsPanel.tsx
+│   │   │   └── UploadPanel.tsx
+│   │   ├── lib/
+│   │   │   └── api.ts
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   ├── styles.css
+│   │   └── types.ts
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
+├── .gitignore
+├── pyproject.toml
+└── README.md
 ```
 
-## Dataset
+## ML Design
 
-The default dataset is generated locally by `backend/scripts/generate_dataset.py`. It creates synthetic chest X-ray-like images with labelled bright suspected-abnormality regions and YOLO `.txt` bounding-box files.
+### Dataset
 
-This is intentionally not a diagnostic dataset. It is a reproducible, authorised teaching dataset that exercises the same data contracts used by a research dataset such as VinDr-CXR or RSNA pneumonia detection data after those datasets are obtained under their license terms.
+The default training script generates a deterministic research-style dataset with:
 
-## Features and Target
+- Chest X-ray-like grayscale images
+- Positive images containing a synthetic suspected abnormality
+- Negative images without the target abnormality
+- YOLO bounding-box labels for positive examples
+- Train, validation, and unseen test splits
+- `data.yaml` for Ultralytics YOLO compatibility
 
-Input features `X` are extracted in `backend/app/ml/features.py`:
+The generated dataset is intentionally a safe, authorised teaching dataset. For serious experimentation, replace it with a licensed research dataset such as VinDr-CXR or RSNA Pneumonia Detection Challenge after accepting the dataset terms and converting annotations to YOLO format.
 
-- intensity statistics: mean, standard deviation, 75th/90th/99th percentiles
-- bright-region ratios
-- high-contrast ratios
-- edge density
-- left/right and upper/lower asymmetry
-- central brightness
-- largest bright connected component ratio
+### Features `X`
 
-Target `y`:
+The supervised ML model uses engineered visual features:
 
-- `has_abnormality = 1` if the generated image has a bounding-box abnormality
-- `has_abnormality = 0` otherwise
+- Mean image intensity
+- Intensity standard deviation
+- 75th, 90th, and 99th percentile intensity
+- Bright area ratio
+- High-contrast area ratio
+- Edge density
+- Left/right asymmetry
+- Upper/lower asymmetry
+- Central brightness
+- Largest bright connected component ratio
 
-The object-localisation output uses YOLO-compatible labels and a localizer in the API. If `backend/app/ml/artifacts/yolo_abnormality.pt` exists, the API will load it through Ultralytics automatically.
+### Target `y`
 
-## Train Models
+`has_abnormality = 1` when the image contains a labelled suspected abnormality.
 
-```bash
-python backend/scripts/train_model.py
-```
+`has_abnormality = 0` when the image does not contain the target abnormality.
 
-Artifacts are written to:
+## Models Trained
+
+- `RandomForestClassifier` baseline
+- `XGBClassifier` stronger model
+- Optional `Ultralytics YOLO` detector when `torch` and `ultralytics` are installed
+
+Latest training run:
+
+| Model | Accuracy | ROC AUC | Average Precision | Precision | Recall | F1 |
+|---|---:|---:|---:|---:|---:|---:|
+| RandomForestClassifier baseline | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+| XGBClassifier stronger_model | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 | 1.0000 |
+
+Selected runtime model: `XGBClassifier stronger_model`.
+
+Detection metrics from the unseen test split:
+
+| Precision | Recall | mAP@50 | mAP@50-95 |
+|---:|---:|---:|---:|
+| 1.0000 | 1.0000 | 1.0000 | 0.6805 |
+
+The selected runtime artifacts are saved to:
 
 ```text
-backend/app/ml/artifacts/
+backend/app/ml/artifacts/strong_xgboost_model.joblib
+backend/app/ml/artifacts/baseline_random_forest.joblib
+backend/app/ml/artifacts/metrics.json
+backend/app/ml/artifacts/feature_schema.json
 ```
 
-To train an Ultralytics YOLO model after installing `torch` and `ultralytics`:
+## Runtime Prediction Flow
+
+1. User uploads an image in the React frontend.
+2. FastAPI receives the image through `POST /api/predict`.
+3. The backend extracts visual features.
+4. The saved supervised ML model predicts abnormality probability.
+5. The detector proposes suspected regions and confidence scores.
+6. The API returns annotated image, bounding boxes, prediction probability, feature values, and metrics.
+7. The frontend displays the original image with predicted boxes and confidence scores.
+
+If `backend/app/ml/artifacts/yolo_abnormality.pt` exists, the backend loads it with Ultralytics and uses YOLO for localisation.
+
+## Local Setup
+
+### 1. Backend
 
 ```bash
-python backend/scripts/train_model.py --train-yolo --yolo-epochs 20
-```
-
-## Backend
-
-Install dependencies:
-
-```bash
-pip install -r backend/requirements.txt
-```
-
-Run API:
-
-```bash
+python -m pip install -r backend/requirements.txt
+python backend/scripts/train_model.py
 uvicorn app.main:app --app-dir backend --reload
 ```
 
-Endpoints:
+Backend API:
 
-- `GET /api/health`
-- `GET /api/metrics`
-- `POST /api/predict`
+```text
+http://localhost:8000/api/health
+```
 
-## Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -117,25 +204,88 @@ npm install
 npm run dev
 ```
 
-The app uploads an image, calls `/api/predict`, and displays:
+Frontend interface:
 
-- original image with predicted bounding boxes
-- detection confidence scores
-- runtime model abnormality probability
-- precision, recall, mAP@50, and mAP@50-95
+```text
+http://localhost:5173
+```
 
-## Tests
+## API Endpoints
+
+- `GET /api/health`
+- `GET /api/metrics`
+- `POST /api/predict`
+
+The prediction response includes:
+
+- Experimental medical disclaimer
+- Image dimensions
+- Detected abnormality regions
+- Bounding boxes
+- Confidence scores
+- Runtime model name
+- Model-predicted abnormality probability
+- Predicted label
+- Engineered feature values
+- Evaluation metrics
+- Base64 annotated image
+
+## Retraining
+
+Run:
+
+```bash
+python backend/scripts/train_model.py
+```
+
+This regenerates or loads:
+
+- Synthetic research-style dataset
+- YOLO-format labels
+- Feature matrix
+- Target vector
+- Baseline model
+- Stronger model
+- Classification metrics
+- Detection metrics
+- Saved model artifacts
+- Metrics JSON artifact
+
+Optional YOLO training:
+
+```bash
+python backend/scripts/train_model.py --train-yolo --yolo-epochs 20
+```
+
+This requires:
+
+- PyTorch
+- Ultralytics
+- Enough compute for YOLO training
+
+## Testing
+
+### Backend Tests
 
 ```bash
 pytest
+```
+
+### Frontend Build
+
+```bash
 cd frontend
 npm run build
 ```
 
-## Storage
+## Repository
 
-`backend/app/services/storage.py` includes local storage and an S3-compatible storage adapter. Add `boto3` and configure bucket credentials to enable S3-compatible uploads.
+Owner: `brianmahlatini`
+
+Repository: `YOLO-Based-Medical-Image-Abnormality-Detection`
+
+Main branch: `main`
 
 ## Medical Safety
 
-This project must be labelled experimental wherever deployed. It is not a medical device, has not been clinically validated, and must not be used to diagnose, treat, or rule out disease.
+This project is not a medical device. It has not been clinically validated and must not be used to diagnose, treat, triage, or rule out disease. The system must remain clearly labelled as experimental wherever it is deployed.
