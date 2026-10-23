@@ -1,0 +1,56 @@
+{
+  "dataset": {
+    "name": "synthetic_vindr_style_demo",
+    "task": "suspected lung abnormality detection in chest X-ray-like images",
+    "samples": 180,
+    "train": 130,
+    "validation": 25,
+    "test": 25,
+    "target": "has_abnormality"
+  },
+  "features": [
+    "mean_intensity",
+    "std_intensity",
+    "p75_intensity",
+    "p90_intensity",
+    "p99_intensity",
+    "bright_area_ratio",
+    "high_contrast_ratio",
+    "edge_density",
+    "left_right_asymmetry",
+    "upper_lower_asymmetry",
+    "central_brightness",
+    "max_component_area_ratio"
+  ],
+  "models": {
+    "baseline": {
+      "model": "RandomForestClassifier",
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "average_precision": 1.0,
+      "roc_auc": 1.0
+    },
+    "stronger": {
+      "model": "XGBClassifier",
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "average_precision": 1.0,
+      "roc_auc": 1.0
+    },
+    "selected_runtime_model": "XGBClassifier",
+    "yolo": {
+      "status": "not_requested",
+      "reason": "Run backend/scripts/train_model.py --train-yolo after installing ultralytics and torch."
+    }
+  },
+  "detection": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "mAP@50": 1.0,
+    "mAP@50-95": 0.6805
+  }
+}

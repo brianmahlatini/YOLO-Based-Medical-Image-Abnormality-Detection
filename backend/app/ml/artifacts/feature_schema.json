@@ -1,0 +1,16 @@
+{
+  "features": [
+    "mean_intensity",
+    "std_intensity",
+    "p75_intensity",
+    "p90_intensity",
+    "p99_intensity",
+    "bright_area_ratio",
+    "high_contrast_ratio",
+    "edge_density",
+    "left_right_asymmetry",
+    "upper_lower_asymmetry",
+    "central_brightness",
+    "max_component_area_ratio"
+  ]
+}
